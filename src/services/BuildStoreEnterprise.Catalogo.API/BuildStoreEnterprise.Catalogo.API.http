@@ -1,0 +1,6 @@
+@BuildStoreEnterprise.Catalogo.API_HostAddress = http://localhost:5012
+
+GET {{BuildStoreEnterprise.Catalogo.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

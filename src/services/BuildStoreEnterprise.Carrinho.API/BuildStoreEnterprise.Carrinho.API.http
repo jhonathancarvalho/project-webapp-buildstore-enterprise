@@ -1,0 +1,6 @@
+@BuildStoreEnterprise.Carrinho.API_HostAddress = http://localhost:5195
+
+GET {{BuildStoreEnterprise.Carrinho.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

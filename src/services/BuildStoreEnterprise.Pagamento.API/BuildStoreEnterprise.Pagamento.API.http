@@ -1,0 +1,6 @@
+@BuildStoreEnterprise.Pagamento.API_HostAddress = http://localhost:5111
+
+GET {{BuildStoreEnterprise.Pagamento.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
