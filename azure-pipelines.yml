@@ -1,0 +1,276 @@
+name: buildstore_enterprise_pipeline
+
+trigger:
+  branches:
+    include:
+      - main
+      - dev
+      - hml
+      - prd
+
+variables:
+  solution: 'src/BuildStoreEnterprise.sln'
+  dotnetVersion: '9.0.x'
+
+pool:
+  name: BuildStoreEnterprise_SelfHost
+  demands:
+    - Agent.Name -equals BuildStoreEnterprise_SelfHost
+
+stages:
+# === CARRINHO ===
+- stage: Publish_Carrinho
+  displayName: 'Publicar API Carrinho'
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/services/BuildStoreEnterprise.Carrinho.API/BuildStoreEnterprise.Carrinho.API.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/services/BuildStoreEnterprise.Carrinho.API/BuildStoreEnterprise.Carrinho.API.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/Carrinho'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/Carrinho/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/Carrinho/*" -Destination $target -Recurse -Force
+
+# === CATALOGO ===
+- stage: Publish_Catalogo
+  displayName: 'Publicar API Catálogo'
+  dependsOn: Publish_Carrinho
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/services/BuildStoreEnterprise.Catalogo.API/BuildStoreEnterprise.Catalogo.API.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/services/BuildStoreEnterprise.Catalogo.API/BuildStoreEnterprise.Catalogo.API.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/Catalogo'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/Catalogo/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/Catalogo/*" -Destination $target -Recurse -Force
+
+# === CLIENTE ===
+- stage: Publish_Cliente
+  displayName: 'Publicar API Cliente'
+  dependsOn: Publish_Catalogo
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/services/BuildStoreEnterprise.Cliente.API/BuildStoreEnterprise.Cliente.API.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/services/BuildStoreEnterprise.Cliente.API/BuildStoreEnterprise.Cliente.API.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/Cliente'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/Cliente/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/Cliente/*" -Destination $target -Recurse -Force
+
+# === IDENTIDADE ===
+- stage: Publish_Identidade
+  displayName: 'Publicar API Identidade'
+  dependsOn: Publish_Cliente
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/services/BuildStoreEnterprise.Identidade.API/BuildStoreEnterprise.Identidade.API.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/services/BuildStoreEnterprise.Identidade.API/BuildStoreEnterprise.Identidade.API.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/Identidade'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/Identidade/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/Identidade/*" -Destination $target -Recurse -Force
+
+# === PAGAMENTO ===
+- stage: Publish_Pagamento
+  displayName: 'Publicar API Pagamento'
+  dependsOn: Publish_Identidade
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/services/BuildStoreEnterprise.Pagamento.API/BuildStoreEnterprise.Pagamento.API.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/services/BuildStoreEnterprise.Pagamento.API/BuildStoreEnterprise.Pagamento.API.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/Pagamento'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/Pagamento/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/Pagamento/*" -Destination $target -Recurse -Force
+
+# === PEDIDO ===
+- stage: Publish_Pedido
+  displayName: 'Publicar API Pedido'
+  dependsOn: Publish_Pagamento
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/services/BuildStoreEnterprise.Pedido.API/BuildStoreEnterprise.Pedido.API.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/services/BuildStoreEnterprise.Pedido.API/BuildStoreEnterprise.Pedido.API.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/Pedido'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/Pedido/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/Pedido/*" -Destination $target -Recurse -Force
+# === WEBAPP MVC ===
+- stage: Publish_WebApp
+  displayName: 'Publicar WebApp MVC'
+  dependsOn: Publish_Pedido
+  jobs:
+  - job: Build
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        packageType: 'sdk'
+        version: '$(dotnetVersion)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'restore'
+        projects: '$(solution)'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: 'src/webapp/BuildStoreEnterprise.WebApp/BuildStoreEnterprise.WebApp.csproj'
+        arguments: '--configuration Release'
+
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'publish'
+        projects: 'src/webapp/BuildStoreEnterprise.WebApp/BuildStoreEnterprise.WebApp.csproj'
+        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/WebApp'
+
+    - task: PowerShell@2
+      inputs:
+        targetType: 'inline'
+        script: |
+          $target = "C:/Deploys/BuildStoreEnterprise/WebApp/$(Build.SourceBranchName)"
+          New-Item -ItemType Directory -Path $target -Force | Out-Null
+          Copy-Item -Path "$(Build.ArtifactStagingDirectory)/WebApp/*" -Destination $target -Recurse -Force
