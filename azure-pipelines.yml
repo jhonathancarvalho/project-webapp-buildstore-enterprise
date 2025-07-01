@@ -36,6 +36,13 @@ variables:
     ${{ else }}: 
       value: $(Build.SourceBranchName)
 
+      - task: PowerShell@2
+  displayName: "📂 Verificar arquivos disponíveis"
+  inputs:
+    targetType: inline
+    script: |
+      Write-Host "Diretório atual: $(System.DefaultWorkingDirectory)"
+      Get-ChildItem -Path "$(System.DefaultWorkingDirectory)" -Recurse -Include *.sln
 stages:
 - stage: Build
   displayName: Compilar e Publicar Aplicações
