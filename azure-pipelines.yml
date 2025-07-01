@@ -72,15 +72,3 @@ stages:
                 --configuration Release `
                 --output "$outputBase/$name"
             }
-
-    - task: FtpUpload@2
-      displayName: "Publicar Artefatos via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)'
-        preservePaths: true
