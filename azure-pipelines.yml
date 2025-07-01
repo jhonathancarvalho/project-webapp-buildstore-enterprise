@@ -42,7 +42,7 @@ stages:
     jobs:
       - job: Build
         pool:
-          name: BuildStoreEnterprise_SelfHost
+          name: BuildStorePipeline
           vmImage: windows-latest
         steps:
 
