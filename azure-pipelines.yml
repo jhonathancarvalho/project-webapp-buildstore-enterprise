@@ -5,7 +5,6 @@ trigger:
     include:
       - master
 
-
 variables:
   - name: env
     value: dev
@@ -31,7 +30,7 @@ stages:
   - job: Build
     displayName: Build & FTP
     pool:
-      name: BuildStorePipelines
+      name: BuildStorePipeline
 
     steps:
     - checkout: self
