@@ -3,16 +3,23 @@
     include:
       - master
 
-pool:
-  vmImage: 'windows-latest'
 
-steps:
-- checkout: self
+jobs:
+  - job: buildjob
+    displayName: Build Job
+    variables:
+      buildConfiguration: 'Release'
+    pool:
+      vmImage: 'ubuntu-latest'
+    steps:
+      - checkout: self
 
-- task: UseDotNet@2
-  inputs:
-    packageType: 'sdk'
-    version: '9.0.x'
+      - task: UseDotNet@2
+        displayName: 'Install .NET SDK'
+        inputs:
+          packageType: 'sdk'
+          version: '9.0.x'
 
-- script: dotnet build BuildStoreEnterprise.sln --configuration Release
-  displayName: 'Build da solução'
+      - script: |
+          dotnet build --configuration $(buildConfiguration)
+        displayName: 'dotnet build $(buildConfiguration)'
