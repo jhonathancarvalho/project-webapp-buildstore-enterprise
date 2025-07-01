@@ -10,9 +10,23 @@ trigger:
 
 # REMOVIDO paths.exclude para não bloquear alterações no YAML
 
-pool:
-  name: BuildStorePipeline
-  vmImage: windows-latest
+pool: { vmImage: windows-2019 } # or whatever pool you use
+steps:
+- checkout: none
+- powershell: |
+    $SEARCH_PATH=$Env:Path
+    Write-Host "##[debug] Found directories"
+    ForEach ($Dir in $SEARCH_PATH -split ";") {
+      Write-Host "$Dir"
+    }
+    Write-Host ""
+    Write-Host ""
+    Write-Host "##[debug] Found files"
+    ForEach ($Dir in $SEARCH_PATH -split ";") {
+      Get-ChildItem $Dir -File -ErrorAction Continue | ForEach-Object -Process {
+        Write-Host $_.FullName
+      }
+    }
 
 variables:
   - name: slnPath
