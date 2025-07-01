@@ -12,6 +12,8 @@ trigger:
       - azure-pipelines.yml
 
 variables:
+  - name: env
+    value: dev    
   - name: slnPath
     value: ./BuildStoreEnterprise.sln
   - name: nameProjectBase
@@ -39,7 +41,6 @@ stages:
     displayName: Build
     pool:
       name: BuildStorePipeline
-      vmImage: windows-latest
     steps:
     
     - checkout: self
