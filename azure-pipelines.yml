@@ -3,7 +3,7 @@ name : buildstore_enterprise
 trigger:
   branches:
     include:
-      - main
+      - master
       - dev
       - hml
       - prd
