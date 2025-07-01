@@ -1,4 +1,4 @@
-name : buildstore_enterprise
+ï»¿name : buildstore_enterprise
 
 trigger:
   branches:
@@ -13,11 +13,11 @@ trigger:
 
 variables:
   - name: slnPath
-    value: ./src/BuildStoreEnterprise.sln
+    value: ./BuildStoreEnterprise.sln
   - name: nameProjectBase
     value: BuildStoreEnterprise.WebApp.MVC
   - name: projPath
-    value: ./src/webapp/$(nameProjectBase)/$(nameProjectBase).csproj
+    value: ./src/web/BuildStoreEnterprise.WebApp.MVC/BuildStoreEnterprise.WebApp.MVC.csproj
   - name: interfaceTestProjectPath
     value: ./src/webapp/$(nameProjectBase)/$(nameProjectBase).csproj
   - name: unitTestProjectPath
@@ -37,21 +37,25 @@ variables:
       value: $(Build.SourceBranchName)
 
 stages:
-  - stage: Build
-    displayName: Compilar e Publicar Aplicações
-    jobs:
-      - job: Build
-        pool:
-          name: BuildStorePipeline
-          vmImage: windows-latest
-        steps:
+- stage: Build
+  displayName: Compilar e Publicar AplicaÃ§Ãµes
+  jobs:
+  - job: Build
+    displayName: Build
+    pool:
+      name: BuildStorePipeline      
+    steps:
+    - task: UseDotNet@2
+      displayName: "Instalar .NETâ€¯SDKÂ 9"
+      inputs:
+        packageType: 'sdk'
+        version: '9.0.x'
 
-          - task: DotNetCoreCLI@2
-            displayName: "Compilar Solução Principal"
-            inputs:
-              command: 'build'
-              projects: '$(slnPath)'
-
+    - task: DotNetCoreCLI@2
+      displayName: "Compilar SoluÃ§Ã£o Principal"
+      inputs:
+        command: 'build'
+        projects: '$(slnPath)'
           - task: PowerShell@2
             displayName: "Compilar APIs em src/services"
             inputs:
@@ -94,7 +98,6 @@ stages:
                     dotnet publish $proj.FullName --configuration Release --output $publishPath
                 }
 
-          # Publicações via FTP
 
           - task: FtpUpload@2
             displayName: "Publicar Projeto Principal via FTP"
