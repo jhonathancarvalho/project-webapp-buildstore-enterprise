@@ -1,4 +1,15 @@
-﻿name: buildstore_enterprise
+﻿parameters:
+  - name: serviceNames
+    type: object
+    default:
+      - BuildStoreEnterprise.Carrinho.API
+      - BuildStoreEnterprise.Catalogo.API
+      - BuildStoreEnterprise.Cliente.API
+      - BuildStoreEnterprise.Identidade.API
+      - BuildStoreEnterprise.Pagamento.API
+      - BuildStoreEnterprise.Pedido.API
+
+name: buildstore_enterprise
 
 trigger:
   branches:
@@ -7,21 +18,14 @@ trigger:
       - dev
       - hml
       - prd
-  paths:
-    exclude:
-      - azure-pipelines.yml
 
 variables:
   - name: slnPath
-    value: ./BuildStoreEnterprise.sln
+    value: BuildStoreEnterprise.sln
   - name: nameProjectBase
     value: BuildStoreEnterprise.WebApp.MVC
   - name: projPath
-    value: ./src/web/BuildStoreEnterprise.WebApp.MVC/BuildStoreEnterprise.WebApp.MVC.csproj
-  - name: interfaceTestProjectPath
-    value: ./src/webapp/$(nameProjectBase)/$(nameProjectBase).csproj
-  - name: unitTestProjectPath
-    value: ./src/webapp/$(nameProjectBase).Test/$(nameProjectBase).Test.csproj
+    value: src/web/BuildStoreEnterprise.WebApp.MVC/BuildStoreEnterprise.WebApp.MVC.csproj
   - name: folderSavePublish
     value: buildstore_enterprise
   - name: uriServerFtp
@@ -31,79 +35,59 @@ variables:
   - name: passServerFtp
     value: $(FTP_PASSWORD)
   - name: env
-    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+    ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
       value: dev
     ${{ else }}:
       value: $(Build.SourceBranchName)
 
 stages:
   - stage: Build
-    displayName: Compilar e Publicar Aplicações
+    displayName: Compilar e Publicar
     jobs:
       - job: BuildAndPublish
-        displayName: Build & FTP Publish
+        displayName: Build & FTP
         pool:
           name: BuildStorePipeline
           vmImage: windows-latest
 
         steps:
-        # 1) Faz checkout do repo
         - checkout: self
           fetchDepth: 1
 
-        # 2) Instala o .NET SDK
         - task: UseDotNet@2
-          displayName: 'Use .NET SDK $(dotnetVersion)'
+          displayName: 'Use .NET SDK 9.x'
           inputs:
             packageType: 'sdk'
             version: '9.0.x'
 
-        # 3) Compila a solução principal
         - task: DotNetCoreCLI@2
-          displayName: 'Compilar solução principal'
+          displayName: 'Build Solution'
           inputs:
             command: 'build'
             projects: '$(slnPath)'
             arguments: '--configuration Release'
 
-        # 4) Compila todas as APIs em src/services
         - task: PowerShell@2
-          displayName: 'Compilar APIs em src/services'
+          displayName: 'Publish MVC'
           inputs:
-            targetType: 'inline'
+            targetType: inline
             script: |
-              Get-ChildItem -Path "$(System.DefaultWorkingDirectory)/src/services" -Recurse -Filter *.csproj |
+              dotnet publish $(projPath) --configuration Release `
+                --output $(Build.ArtifactStagingDirectory)/$(nameProjectBase)
+
+        - task: PowerShell@2
+          displayName: 'Publish Services'
+          inputs:
+            targetType: inline
+            script: |
+              Get-ChildItem src/services -Recurse -Filter *.csproj |
                 ForEach-Object {
-                  Write-Host "Compilando projeto $($_.FullName)"
-                  dotnet build $_.FullName --configuration Release
+                  $name = Split-Path $_.DirectoryName -Leaf
+                  dotnet publish $_.FullName --configuration Release `
+                    --output $(Build.ArtifactStagingDirectory)/services/$name
                 }
 
-        # 5) Publica página MVC
-        - task: DotNetCoreCLI@2
-          displayName: 'Publicar Projeto MVC'
-          inputs:
-            command: 'publish'
-            publishWebProjects: false
-            projects: '$(projPath)'
-            arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/$(nameProjectBase)'
-
-        # 6) Publica todas as APIs
-        - task: PowerShell@2
-          displayName: 'Publicar APIs via PowerShell'
-          inputs:
-            targetType: 'inline'
-            script: |
-              $servicesPath = "$(System.DefaultWorkingDirectory)/src/services"
-              $outputBase  = "$(Build.ArtifactStagingDirectory)/services"
-              Get-ChildItem -Path $servicesPath -Recurse -Filter *.csproj |
-                ForEach-Object {
-                  $projectName = Split-Path $_.DirectoryName -Leaf
-                  $publishPath = Join-Path $outputBase $projectName
-                  Write-Host "Publicando $($_.FullName) em $publishPath"
-                  dotnet publish $_.FullName --configuration Release --output $publishPath
-                }
-
-        # 7) Publicações FTP
+        # Agora o loop correto para cada serviço
         - ${{ each svc in parameters.serviceNames }}:
           - task: FtpUpload@2
             displayName: 'Publicar ${{ svc }} via FTP'
@@ -116,12 +100,3 @@ stages:
               filePatterns: '**'
               remoteDirectory: '/$(env)/$(folderSavePublish)/services/${{ svc }}'
               preservePaths: true
-
-parameters:
-  serviceNames:
-    - BuildStoreEnterprise.Carrinho.API
-    - BuildStoreEnterprise.Catalogo.API
-    - BuildStoreEnterprise.Cliente.API
-    - BuildStoreEnterprise.Identidade.API
-    - BuildStoreEnterprise.Pagamento.API
-    - BuildStoreEnterprise.Pedido.API
