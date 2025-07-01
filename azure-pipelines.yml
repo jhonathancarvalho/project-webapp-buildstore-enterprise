@@ -30,11 +30,6 @@ variables:
     value: $(FTP_USERNAME)
   - name: passServerFtp
     value: $(FTP_PASSWORD)
-  - name: env
-    ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
-      value: dev
-    ${{ else }}:
-      value: $(Build.SourceBranchName)
 
 stages:
 - stage: Build
@@ -46,6 +41,17 @@ stages:
       name: BuildStorePipeline
     steps:
     - checkout: self
+
+    - task: PowerShell@2
+      displayName: "🔧 Definir variável de ambiente"
+      inputs:
+        targetType: 'inline'
+        script: |
+          if ("$(Build.SourceBranchName)" -eq "master") {
+            Write-Host "##vso[task.setvariable variable=env]dev"
+          } else {
+            Write-Host "##vso[task.setvariable variable=env]$(Build.SourceBranchName)"
+          }
 
     - task: UseDotNet@2
       displayName: "Instalar .NET SDK 9"
@@ -65,7 +71,7 @@ stages:
       displayName: "Compilar Solução Principal"
       inputs:
         command: 'build'
-        projects: '$(slnPath)'
+        projects: '$(System.DefaultWorkingDirectory)/BuildStoreEnterprise.sln'
 
     - task: PowerShell@2
       displayName: "Compilar APIs em src/services"
