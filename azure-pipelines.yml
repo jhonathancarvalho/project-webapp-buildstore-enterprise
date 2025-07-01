@@ -2,23 +2,14 @@
   branches:
     include:
       - master
-      - dev
-      - hml
-      - prd
 
 pool:
   name: BuildStorePipeline   
-
-variables:
-  solution: 'BuildStoreEnterprise.sln'
-  dotnetVersion: '9.0.x'
-  buildConfiguration: 'Release'
 
 steps:
 - checkout: self
 
 - task: UseDotNet@2
-  displayName: 'Instalar .NET SDK $(dotnetVersion)'
   inputs:
     packageType: 'sdk'
     version: '$(dotnetVersion)'
