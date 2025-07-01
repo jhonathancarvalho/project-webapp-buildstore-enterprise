@@ -13,7 +13,7 @@ trigger:
 
 variables:
   - name: slnPath
-    value: ./BuildStoreEnterprise.sln
+    value: BuildStoreEnterprise.sln
   - name: nameProjectBase
     value: BuildStoreEnterprise.WebApp.MVC
   - name: projPath
