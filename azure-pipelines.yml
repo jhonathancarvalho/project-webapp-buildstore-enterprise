@@ -4,7 +4,7 @@
       - master
 
 pool:
-  name: BuildStorePipeline   
+  vmImage: 'windows-latest'
 
 steps:
 - checkout: self
@@ -12,7 +12,7 @@ steps:
 - task: UseDotNet@2
   inputs:
     packageType: 'sdk'
-    version: '$(dotnetVersion)'
+    version: '9.0.x'
 
-- script: dotnet build $(solution) --configuration $(buildConfiguration)
+- script: dotnet build BuildStoreEnterprise.sln --configuration Release
   displayName: 'Build da solução'
