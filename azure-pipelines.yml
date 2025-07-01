@@ -1,4 +1,4 @@
-﻿name: buildstore_enterprise
+﻿name : buildstore_enterprise
 
 trigger:
   branches:
@@ -13,7 +13,7 @@ trigger:
 
 variables:
   - name: slnPath
-    value: ./BuildStoreEnterprise.sln
+    value: BuildStoreEnterprise.sln
   - name: nameProjectBase
     value: BuildStoreEnterprise.WebApp.MVC
   - name: projPath
@@ -31,10 +31,11 @@ variables:
   - name: passServerFtp
     value: $(FTP_PASSWORD)
   - name: env
-    ${{ if eq(variables['Build.SourceBranchName'], 'master') }}:
-      value: dev
-    ${{ else }}:
+    ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
+      value: dev 
+    ${{ else }}: 
       value: $(Build.SourceBranchName)
+
 
 stages:
 - stage: Build
@@ -43,152 +44,142 @@ stages:
   - job: Build
     displayName: Build
     pool:
-      name: BuildStorePipeline
+      name: BuildStorePipeline      
     steps:
-    - checkout: self
-
     - task: UseDotNet@2
-      displayName: "Instalar .NET SDK 9"
+      displayName: "Instalar .NET SDK 9"
       inputs:
         packageType: 'sdk'
         version: '9.0.x'
-
-    - task: PowerShell@2
-      displayName: "🔍 Verificar arquivos .sln"
-      inputs:
-        targetType: 'inline'
-        script: |
-          Write-Host "Listando arquivos .sln no diretório atual:"
-          Get-ChildItem -Path "$(System.DefaultWorkingDirectory)" -Recurse -Filter *.sln
 
     - task: DotNetCoreCLI@2
       displayName: "Compilar Solução Principal"
       inputs:
         command: 'build'
         projects: '$(slnPath)'
+          - task: PowerShell@2
+            displayName: "Compilar APIs em src/services"
+            inputs:
+              targetType: inline
+              script: |
+                Get-ChildItem -Path "$(System.DefaultWorkingDirectory)/src/services" -Recurse -Filter *.csproj | ForEach-Object {
+                  Write-Host "Compilando projeto $($_.FullName)"
+                  dotnet build $_.FullName --configuration Release
+                }
 
-    - task: PowerShell@2
-      displayName: "Compilar APIs em src/services"
-      inputs:
-        targetType: inline
-        script: |
-          Get-ChildItem -Path "$(System.DefaultWorkingDirectory)/src/services" -Recurse -Filter *.csproj | ForEach-Object {
-            Write-Host "Compilando projeto $($_.FullName)"
-            dotnet build $_.FullName --configuration Release
-          }
+          - task: FileTransform@1
+            displayName: "Aplicando regra Environment"
+            inputs:
+              folderPath: '$(System.DefaultWorkingDirectory)'
+              fileType: 'json'
+              targetFiles: '**/appsettings.json'
 
-    - task: FileTransform@1
-      displayName: "Aplicando regra Environment"
-      inputs:
-        folderPath: '$(System.DefaultWorkingDirectory)'
-        fileType: 'json'
-        targetFiles: '**/appsettings.json'
+          - task: DotNetCoreCLI@2
+            displayName: "Publicar Projeto Principal"
+            inputs:
+              command: 'publish'
+              publishWebProjects: true
+              projects: '$(projPath)'
+              arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/$(nameProjectBase)'
+              zipAfterPublish: false
 
-    - task: DotNetCoreCLI@2
-      displayName: "Publicar Projeto Principal"
-      inputs:
-        command: 'publish'
-        publishWebProjects: true
-        projects: '$(projPath)'
-        arguments: '--configuration Release --output $(Build.ArtifactStagingDirectory)/$(nameProjectBase)'
-        zipAfterPublish: false
+          - task: PowerShell@2
+            displayName: "Publicar APIs da pasta services"
+            inputs:
+              targetType: 'inline'
+              script: |
+                $servicesPath = "$(System.DefaultWorkingDirectory)/src/services"
+                $outputBase = "$(Build.ArtifactStagingDirectory)/services"
+                $projects = Get-ChildItem -Path $servicesPath -Recurse -Filter *.csproj
 
-    - task: PowerShell@2
-      displayName: "Publicar APIs da pasta services"
-      inputs:
-        targetType: 'inline'
-        script: |
-          $servicesPath = "$(System.DefaultWorkingDirectory)/src/services"
-          $outputBase = "$(Build.ArtifactStagingDirectory)/services"
-          $projects = Get-ChildItem -Path $servicesPath -Recurse -Filter *.csproj
+                foreach ($proj in $projects) {
+                    $projectName = Split-Path $proj.DirectoryName -Leaf
+                    $publishPath = "$outputBase/$projectName"
+                    Write-Host "Publicando $($proj.FullName) em $publishPath"
+                    dotnet publish $proj.FullName --configuration Release --output $publishPath
+                }
 
-          foreach ($proj in $projects) {
-              $projectName = Split-Path $proj.DirectoryName -Leaf
-              $publishPath = "$outputBase/$projectName"
-              Write-Host "Publicando $($proj.FullName) em $publishPath"
-              dotnet publish $proj.FullName --configuration Release --output $publishPath
-          }
 
-    - task: FtpUpload@2
-      displayName: "Publicar Projeto Principal via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/$(nameProjectBase)'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Projeto Principal via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/$(nameProjectBase)'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)'
+              preservePaths: true
 
-    - task: FtpUpload@2
-      displayName: "Publicar Carrinho.API via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Carrinho.API'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Carrinho.API'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Carrinho.API via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Carrinho.API'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Carrinho.API'
+              preservePaths: true
 
-    - task: FtpUpload@2
-      displayName: "Publicar Catalogo.API via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Catalogo.API'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Catalogo.API'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Catalogo.API via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Catalogo.API'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Catalogo.API'
+              preservePaths: true
 
-    - task: FtpUpload@2
-      displayName: "Publicar Cliente.API via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Cliente.API'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Cliente.API'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Cliente.API via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Cliente.API'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Cliente.API'
+              preservePaths: true
 
-    - task: FtpUpload@2
-      displayName: "Publicar Identidade.API via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Identidade.API'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Identidade.API'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Identidade.API via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Identidade.API'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Identidade.API'
+              preservePaths: true
 
-    - task: FtpUpload@2
-      displayName: "Publicar Pagamento.API via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Pagamento.API'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Pagamento.API'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Pagamento.API via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Pagamento.API'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Pagamento.API'
+              preservePaths: true
 
-    - task: FtpUpload@2
-      displayName: "Publicar Pedido.API via FTP"
-      inputs:
-        credentialsOption: 'inputs'
-        serverUrl: $(uriServerFtp)
-        username: $(userServerFtp)
-        password: $(passServerFtp)
-        rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Pedido.API'
-        filePatterns: '**'
-        remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Pedido.API'
-        preservePaths: true
+          - task: FtpUpload@2
+            displayName: "Publicar Pedido.API via FTP"
+            inputs:
+              credentialsOption: 'inputs'
+              serverUrl: $(uriServerFtp)
+              username: $(userServerFtp)
+              password: $(passServerFtp)
+              rootDirectory: '$(Build.ArtifactStagingDirectory)/services/BuildStoreEnterprise.Pedido.API'
+              filePatterns: '**'
+              remoteDirectory: '/$(env)/$(folderSavePublish)/services/BuildStoreEnterprise.Pedido.API'
+              preservePaths: true
