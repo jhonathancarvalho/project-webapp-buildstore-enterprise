@@ -1,14 +1,52 @@
-﻿trigger:
+﻿name: build_and_test_pipeline
+
+trigger:
   branches:
     include:
-      - master
+      - master  
 
-stages:
-- stage: Teste
-  jobs:
-  - job: Exemplo
-    pool:
-      vmImage: 'windows-latest'
-    steps:
-    - script: echo "Pipeline executando com sucesso"
-      displayName: "Etapa de validação"
+pool:
+  name: BuildStorePipeline 
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '9.0.x'
+  solution: 'src/BuildStoreEnterprise.sln'
+
+steps:
+
+# Checkout do código
+- checkout: self
+  fetchDepth: 1  
+
+# Instala o SDK do .NET
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: '$(dotnetVersion)'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+
+# Restaura pacotes NuGet
+- task: DotNetCoreCLI@2
+  displayName: 'Restaurar pacotes'
+  inputs:
+    command: 'restore'
+    projects: '$(solution)'
+
+# Compila o projeto
+- task: DotNetCoreCLI@2
+  displayName: 'Compilar solução'
+  inputs:
+    command: 'build'
+    projects: '$(solution)'
+    arguments: '--configuration $(buildConfiguration)'
+
+
+# Publica o resultado dos testes
+- task: PublishTestResults@2
+  displayName: 'Publicar resultados dos testes'
+  condition: succeededOrFailed()
+  inputs:
+    testResultsFormat: 'VSTest'
+    testResultsFiles: '**/TestResults/*.trx'
+    mergeTestResults: true
