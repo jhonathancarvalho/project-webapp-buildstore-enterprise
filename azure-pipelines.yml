@@ -39,19 +39,10 @@ stages:
     displayName: Build
     pool:
       name: BuildStorePipeline
+      vmImage: windows-latest
     steps:
+    
     - checkout: self
-
-    - task: PowerShell@2
-      displayName: "🔧 Definir variável de ambiente"
-      inputs:
-        targetType: 'inline'
-        script: |
-          if ("$(Build.SourceBranchName)" -eq "master") {
-            Write-Host "##vso[task.setvariable variable=env]dev"
-          } else {
-            Write-Host "##vso[task.setvariable variable=env]$(Build.SourceBranchName)"
-          }
 
     - task: UseDotNet@2
       displayName: "Instalar .NET SDK 9"
@@ -59,19 +50,12 @@ stages:
         packageType: 'sdk'
         version: '9.0.x'
 
-    - task: PowerShell@2
-      displayName: "🔍 Verificar arquivos .sln"
-      inputs:
-        targetType: 'inline'
-        script: |
-          Write-Host "Listando arquivos .sln no diretório atual:"
-          Get-ChildItem -Path "$(System.DefaultWorkingDirectory)" -Recurse -Filter *.sln
 
     - task: DotNetCoreCLI@2
-      displayName: "Compilar Solução Principal"
+      displayName: "Compilar Projeto"
       inputs:
         command: 'build'
-        projects: '$(System.DefaultWorkingDirectory)/BuildStoreEnterprise.sln'
+        projects: '$(slnPath)'
 
     - task: PowerShell@2
       displayName: "Compilar APIs em src/services"
