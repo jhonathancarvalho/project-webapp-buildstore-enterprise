@@ -4,12 +4,8 @@ trigger:
   branches:
     include:
       - master
-      - dev
-      - hml
-      - prd
-  paths:
-    exclude:
-      - azure-pipelines.yml
+     
+  
 
 variables:
   - name: env
