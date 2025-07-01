@@ -30,7 +30,7 @@ stages:
   - job: Build
     displayName: Build & FTP
     pool:
-      name: BuildStorePipeline
+      name: BuildStorePipelines
 
     steps:
     - checkout: self
