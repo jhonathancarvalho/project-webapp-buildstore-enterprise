@@ -43,7 +43,7 @@ stages:
       - job: Build
         pool:
           name: Windows Server - Agent 1
-          vmImage: ubuntu-latest
+          vmImage: windows-latest
         steps:
 
           - task: DotNetCoreCLI@2
