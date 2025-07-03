@@ -25,10 +25,10 @@ variables:
 
 stages:
 - stage: BuildAndPublish
-  displayName: Compilar e Publicar Aplicações
+  displayName: Build e Deploy da Aplicação
   jobs:
   - job: Build
-    displayName: Build & FTP
+    displayName: Compilação e Publicação via FTP
     pool:
       name: BuildStorePipelines
 
@@ -57,7 +57,6 @@ stages:
             --configuration Release `
             --output $(Build.ArtifactStagingDirectory)/$(nameProjectBase)
 
-    # Se tiver APIs em src/services, compila e publica:
     - task: PowerShell@2
       displayName: "Publicar APIs em src/services"
       inputs:
